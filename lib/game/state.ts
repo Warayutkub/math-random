@@ -5,15 +5,21 @@ export type Tile = { id: number; value: number; used: boolean };
 
 export type EndReason = "submitted" | "timeout" | "gaveUp";
 
+export type GameError = { message: string; seq: number };
+
 export type GameState = {
   round: Round;
+  /** Bumps on every new round so the deal animation replays. */
+  dealId: number;
+  /** True while the deal animation runs: the clock is stopped and moves are ignored. */
+  dealing: boolean;
   tiles: Tile[];
   history: { tiles: Tile[]; step: Step }[];
   selectedId: number | null;
   op: Op | null;
   timeLeft: number;
   ended: EndReason | null;
-  error: string | null;
+  error: GameError | null;
 };
 
 export type Action =
@@ -23,12 +29,25 @@ export type Action =
   | { type: "reset" }
   | { type: "tick" }
   | { type: "end"; reason: EndReason }
-  | { type: "newRound"; round: Round };
+  | { type: "newRound"; round: Round }
+  | { type: "dealt" }
+  | { type: "dismissError" };
 
 const freshTiles = (numbers: number[]): Tile[] => numbers.map((value, id) => ({ id, value, used: false }));
 
-export function initGame(round: Round): GameState {
-  return { round, tiles: freshTiles(round.numbers), history: [], selectedId: null, op: null, timeLeft: ROUND_SECONDS, ended: null, error: null };
+export function initGame(round: Round, dealId = 0): GameState {
+  return {
+    round,
+    dealId,
+    dealing: true,
+    tiles: freshTiles(round.numbers),
+    history: [],
+    selectedId: null,
+    op: null,
+    timeLeft: ROUND_SECONDS,
+    ended: null,
+    error: null,
+  };
 }
 
 /** The player's answer is whichever number still on the board is closest to the target. */
@@ -52,8 +71,8 @@ function pickTile(state: GameState, id: number): GameState {
   const first = state.tiles.find((t) => t.id === state.selectedId)!;
   const result = applyOp(first.value, state.op, tile.value);
   if (result === null) {
-    const error = state.op === "/" ? "หารไม่ลงตัว ลองตัวอื่นนะ" : "ผลลบต้องมากกว่า 0";
-    return { ...state, error };
+    const message = state.op === "/" ? "หารไม่ลงตัว ลองตัวอื่นนะ" : "ผลลบต้องมากกว่า 0";
+    return { ...state, error: { message, seq: (state.error?.seq ?? 0) + 1 } };
   }
 
   const tiles = state.tiles.map((t) =>
@@ -72,8 +91,10 @@ function pickTile(state: GameState, id: number): GameState {
 }
 
 export function gameReducer(state: GameState, action: Action): GameState {
-  if (action.type === "newRound") return initGame(action.round);
-  if (state.ended) return state;
+  if (action.type === "newRound") return initGame(action.round, state.dealId + 1);
+  if (action.type === "dismissError") return { ...state, error: null };
+  if (action.type === "dealt") return { ...state, dealing: false };
+  if (state.ended || state.dealing) return state;
 
   switch (action.type) {
     case "pickTile":

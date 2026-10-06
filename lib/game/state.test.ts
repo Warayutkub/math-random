@@ -3,7 +3,9 @@ import { ROUND_SECONDS } from "./round";
 import { type Action, bestTile, gameReducer, type GameState, initGame } from "./state";
 
 const round = { numbers: [3, 7, 8, 10, 5], target: 87 };
-const play = (...actions: Action[]) => actions.reduce(gameReducer, initGame(round));
+// Most tests start after the deal animation has finished.
+const start = gameReducer(initGame(round), { type: "dealt" });
+const play = (...actions: Action[]) => actions.reduce(gameReducer, start);
 const values = (s: GameState) => s.tiles.filter((t) => !t.used).map((t) => t.value);
 
 // Tile ids follow the dealt order: 3=0, 7=1, 8=2, 10=3, 5=4.
@@ -26,13 +28,13 @@ describe("gameReducer", () => {
 
   it("rejects division that is not whole and keeps the board", () => {
     const s = play({ type: "pickTile", id: 1 }, { type: "pickOp", op: "/" }, { type: "pickTile", id: 0 });
-    expect(s.error).toMatch("หารไม่ลงตัว");
+    expect(s.error?.message).toMatch("หารไม่ลงตัว");
     expect(values(s)).toEqual(round.numbers);
   });
 
   it("rejects subtraction that is not positive", () => {
     const s = play({ type: "pickTile", id: 0 }, { type: "pickOp", op: "-" }, { type: "pickTile", id: 1 });
-    expect(s.error).toMatch("ผลลบ");
+    expect(s.error?.message).toMatch("ผลลบ");
   });
 
   it("ignores an operator until a number is picked", () => {
@@ -57,7 +59,7 @@ describe("gameReducer", () => {
     const two = play(...eightTimesTen, { type: "pickOp", op: "+" }, { type: "pickTile", id: 1 });
     expect(values(gameReducer(two, { type: "undo" }))).toEqual([3, 7, 80, 5]);
     expect(values(gameReducer(two, { type: "reset" }))).toEqual(round.numbers);
-    expect(play({ type: "undo" })).toEqual(initGame(round));
+    expect(play({ type: "undo" })).toEqual(start);
   });
 
   it("ends when the timer runs out and then ignores moves", () => {
@@ -72,7 +74,42 @@ describe("gameReducer", () => {
     expect(play({ type: "end", reason: "submitted" }).ended).toBe("submitted");
     const next = { numbers: [1, 2, 3, 4, 5], target: 50 };
     const s = gameReducer(play({ type: "end", reason: "gaveUp" }), { type: "newRound", round: next });
-    expect(s).toEqual(initGame(next));
+    expect(s).toEqual(initGame(next, 1));
+    expect(s.dealing).toBe(true);
+  });
+});
+
+describe("dealing", () => {
+  it("starts every round dealing, with the clock stopped and moves ignored", () => {
+    const dealing = initGame(round);
+    expect(dealing.dealing).toBe(true);
+    for (const a of [{ type: "tick" }, { type: "pickTile", id: 0 }, { type: "end", reason: "submitted" }] as Action[]) {
+      expect(gameReducer(dealing, a)).toBe(dealing);
+    }
+  });
+
+  it("lets play begin once the deal is done", () => {
+    expect(start.dealing).toBe(false);
+    expect(gameReducer(start, { type: "tick" }).timeLeft).toBe(ROUND_SECONDS - 1);
+  });
+});
+
+describe("errors", () => {
+  const badDivide: Action[] = [{ type: "pickTile", id: 1 }, { type: "pickOp", op: "/" }, { type: "pickTile", id: 0 }];
+
+  it("numbers each error so a repeated mistake shows a fresh toast", () => {
+    const once = play(...badDivide);
+    const twice = gameReducer(once, { type: "pickTile", id: 0 });
+    expect(once.error?.seq).toBe(1);
+    expect(twice.error?.seq).toBe(2);
+  });
+
+  it("clears the error when dismissed or on the next good move", () => {
+    const s = play(...badDivide);
+    expect(gameReducer(s, { type: "dismissError" }).error).toBeNull();
+    // 7 − 5 = 2 is allowed.
+    const fixed = [{ type: "pickOp", op: "-" }, { type: "pickTile", id: 4 }] as Action[];
+    expect(fixed.reduce(gameReducer, s).error).toBeNull();
   });
 });
 
