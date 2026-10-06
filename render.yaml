@@ -7,6 +7,7 @@ services:
     plan: free
     branch: main
     dockerfilePath: ./Dockerfile
-    # Deploy only after GitHub CI passes on main.
-    autoDeployTrigger: checksPass
+    # Deploy as soon as a PR is merged into main. CI already passed on the PR,
+    # and branch protection keeps direct pushes out of main.
+    autoDeployTrigger: commit
     healthCheckPath: /

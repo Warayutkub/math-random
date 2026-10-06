@@ -31,12 +31,12 @@ npm run lint && npm run typecheck
 
 ```
 feature branch → Pull Request → GitHub Actions (lint, typecheck, tests + coverage ≥ 80%, Docker build + smoke test)
-              → merge into main → CI ผ่านบน main → Render build Dockerfile แล้ว deploy
+              → กด merge into main → Render build Dockerfile แล้ว deploy ทันที
 ```
 
 - **CI**: [.github/workflows/ci.yml](.github/workflows/ci.yml)
 - **Container**: [Dockerfile](Dockerfile) (multi-stage, Next.js `output: "standalone"`, รันด้วย user ที่ไม่ใช่ root)
-- **Render**: [render.yaml](render.yaml) (Blueprint, `autoDeployTrigger: checksPass`)
+- **Render**: [render.yaml](render.yaml) (Blueprint, `autoDeployTrigger: commit` deploy ทุกครั้งที่ main เปลี่ยน ซึ่งเกิดได้ทางเดียวคือ merge PR เพราะมี branch protection)
 
 ### ตั้งค่าครั้งแรก
 
