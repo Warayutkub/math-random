@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# เลขใกล้เคียง (Math Random)
 
-## Getting Started
+เกมคณิตศาสตร์: สุ่มตัวเลข 5 ตัว (1–10) และเลขเป้าหมาย (20–99) ผู้เล่นใช้ + − × ÷ รวมตัวเลขให้ได้ใกล้เป้าที่สุดภายใน 60 วินาที
 
-First, run the development server:
+- ใช้ตัวเลขแต่ละตัวได้ครั้งเดียว ไม่จำเป็นต้องใช้ครบ
+- ผลระหว่างทางต้องเป็นจำนวนเต็มบวก (ลบแล้วต้องมากกว่า 0, หารต้องลงตัว)
+- จบรอบแล้วมีเฉลย ซึ่งหาโดยลองทุกวิธีที่เป็นไปได้ ([lib/game/solver.ts](lib/game/solver.ts))
+- เริ่มรอบด้วยอนิเมชันสุ่มเลขแบบวงล้อสล็อต (ข้ามได้ถ้าเครื่องตั้ง reduced motion), ยอมแพ้ต้องยืนยันก่อน, ทำผิดกติกาขึ้น toast
+- Design: Figma ไฟล์ `math-random` (sections `Game`, `Game deal`, `System pages` สถานะ Approved)
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
+npm test             # unit tests (Vitest)
+npm run test:coverage
+npm run lint && npm run typecheck
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Path | What |
+|---|---|
+| `lib/game/` | game logic เป็นฟังก์ชันล้วน ไม่มี React: กติกา, สุ่มรอบ, solver, reducer ของ state |
+| `app/_components/` | UI ของเกม (`Game.tsx` เป็น client component) |
+| `components/ui/` | ปุ่มพื้นฐาน |
+| `app/tokens.css` | design tokens ที่สร้างจาก Figma (ไฟล์ `math-random`) ด้วย wara-bridge ห้ามแก้ด้วยมือ |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## CI/CD
 
-## Learn More
+```
+feature branch → Pull Request → GitHub Actions (lint, typecheck, tests + coverage ≥ 80%, Docker build + smoke test)
+              → กด merge into main → Render build Dockerfile แล้ว deploy ทันที
+```
 
-To learn more about Next.js, take a look at the following resources:
+- **CI**: [.github/workflows/ci.yml](.github/workflows/ci.yml)
+- **Container**: [Dockerfile](Dockerfile) (multi-stage, Next.js `output: "standalone"`, รันด้วย user ที่ไม่ใช่ root)
+- **Render**: [render.yaml](render.yaml) (Blueprint, `autoDeployTrigger: commit` deploy ทุกครั้งที่ main เปลี่ยน ซึ่งเกิดได้ทางเดียวคือ merge PR เพราะมี branch protection)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### ตั้งค่าครั้งแรก
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. push repo ขึ้น GitHub
+2. Render → **New → Blueprint** → เลือก repo แล้ว Render จะอ่าน `render.yaml` เอง
+3. GitHub → Settings → Branches → ตั้ง branch protection ให้ `main`: ต้องผ่าน PR และ status checks `Lint & typecheck`, `Unit tests`, `Docker build & smoke test`
 
-## Deploy on Vercel
+### รัน Docker เอง
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+docker build -t math-random .
+docker run -p 3000:3000 math-random
+```
