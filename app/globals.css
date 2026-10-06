@@ -2,11 +2,45 @@
 @import "./tokens.css";
 
 @theme inline {
-  --font-sans: var(--font-plex-loaded), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-prompt-loaded), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-kanit-loaded), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
   background: var(--color-background);
   color: var(--color-text);
+}
+
+/* Deal animation: a strip of numbers slides up inside a clipped window (slot-machine reel),
+   slowing down as it lands, then the window bounces once. Timing comes from inline vars. */
+@keyframes reel-spin {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(var(--reel-end));
+  }
+}
+
+@keyframes reel-land {
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.reel-strip {
+  animation: reel-spin var(--reel-duration) cubic-bezier(0.15, 0.85, 0.25, 1) forwards;
+}
+
+.reel-land {
+  animation: reel-land 150ms ease-out var(--reel-duration);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reel-strip {
+    animation: none;
+    transform: translateY(var(--reel-end));
+  }
+  .reel-land {
+    animation: none;
+  }
 }

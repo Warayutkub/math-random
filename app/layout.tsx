@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Thai, Prompt } from "next/font/google";
+import { Kanit } from "next/font/google";
 import "./globals.css";
 
-const plex = IBM_Plex_Sans_Thai({
-  variable: "--font-plex-loaded",
+const kanit = Kanit({
+  variable: "--font-kanit-loaded",
   subsets: ["thai", "latin"],
-  weight: ["400", "600"],
-});
-
-const prompt = Prompt({
-  variable: "--font-prompt-loaded",
-  subsets: ["thai", "latin"],
-  weight: ["500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -21,8 +15,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="th" className={`${plex.variable} ${prompt.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">{children}</body>
+    <html lang="th" className={`${kanit.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col font-sans">{children}</body>
     </html>
   );
 }
