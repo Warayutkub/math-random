@@ -1,0 +1,12 @@
+# Render Blueprint — Render builds the Dockerfile and deploys when main changes.
+# Flow: PR → CI green → merge to main → Render deploys main.
+services:
+  - type: web
+    name: math-random
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./Dockerfile
+    # Deploy only after GitHub CI passes on main.
+    autoDeployTrigger: checksPass
+    healthCheckPath: /
